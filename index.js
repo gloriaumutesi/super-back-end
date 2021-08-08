@@ -7,6 +7,7 @@ const validate = require("validate.js");
 
 
 const app = express();
+let data = [];
 
 
 
@@ -45,7 +46,7 @@ app.post('/upload', function(req, res) {
         const workbook = xlsx.read(req.file.buffer, {type:'buffer'});
         const sheet_name_list = workbook.SheetNames;
         const sheet = sheet_name_list[0];
-        const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheet],{'raw':true});
+        data = xlsx.utils.sheet_to_json(workbook.Sheets[sheet],{'raw':true});
 
         const constraints = {
             "Names": {
@@ -94,9 +95,18 @@ app.post('/upload', function(req, res) {
         });
         
 
-        res.json(data);
+        res.sendStatus(200);
     });
 });
+
+app.get('/records', (req, res) => {
+    page_number = req.params.page || 1;
+    page_size = req.params.limit || 50;
+    if(page_number < 1) page_number = 1; // page number starts at 1
+    if(page_size < 1) page_size = 50;
+    res.json(data.slice((page_number - 1) * page_size, page_number * page_size));
+});
+
 
   //port definition
 const port = process.env.PORT || 5000;
