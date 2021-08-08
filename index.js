@@ -3,6 +3,10 @@ const cors = require('cors');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const validate = require("validate.js");
+const passport = require('passport');
+const JwtStrategy = require('passport-jwt').Strategy;
+const ExtractJwt = require('passport-jwt').ExtractJwt;
+
 
 const knex = require('knex')({
     client: 'sqlite3',
@@ -17,7 +21,19 @@ const bookshelf = require('bookshelf')(knex);
 
 const app = express();
 let data = [];
+const opts = {
+    'jwtFromRequest': ExtractJwt.fromAuthHeaderAsBearerToken(),
+    'secretOrKey': 'RNE9xqQ8mcE9Gwfd'
+};
 
+const verification_code = 'YE8YsPDG38W9qdVm';
+
+passport.use(new JwtStrategy(opts, function(jwt_payload, done) {
+    if(jwt_payload['verification_code'] == verification_code)
+        return done(null, 'authorized');
+    else
+        return done(err, false);
+}));
 
 
 app.use(cors());
@@ -41,7 +57,7 @@ var upload = multer({
     }
 }).single('file');
 
-app.post('/upload', function(req, res) {
+app.post('/upload',passport.authenticate('jwt', { session: false }), function(req, res) {
     upload(req, res, function(err){
         if(err){
             res.json({error_code:1,err_desc:err});
@@ -108,7 +124,7 @@ app.post('/upload', function(req, res) {
     });
 });
 
-app.get('/records', (req, res) => {
+app.get('/records',passport.authenticate('jwt', { session: false }),(req, res) => {
     page_number = req.params.page || 1;
     page_size = req.params.limit || 50;
     if(page_number < 1) page_number = 1; // page number starts at 1
@@ -139,7 +155,7 @@ async function save_users() {
     }
 }
 
-app.post('/users', (req, res) => {
+app.post('/users',passport.authenticate('jwt', { session: false }), (req, res) => {
     save_users()
     .then(() => {
         res.sendStatus(201);
