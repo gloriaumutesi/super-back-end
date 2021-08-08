@@ -4,6 +4,15 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 const validate = require("validate.js");
 
+const knex = require('knex')({
+    client: 'sqlite3',
+    connection: {
+        filename: "./database.sqlite"
+    },
+});
+
+
+const bookshelf = require('bookshelf')(knex);
 
 
 const app = express();
@@ -107,11 +116,44 @@ app.get('/records', (req, res) => {
     res.json(data.slice((page_number - 1) * page_size, page_number * page_size));
 });
 
+// Defining models
+const User = bookshelf.model('User', {
+    tableName: 'users',
+    idAttribute: 'id'
+
+});
+
+async function save_users() {
+    for (let row of data){
+        let user = Object.assign({}, row);
+        user['phone_number'] = user['phone number'];
+        delete user['phone number'];
+        delete user['validation errors'];
+        try {
+            await new User(user).save();
+        }
+        catch(e) {
+            console.log(`Failed to save data: ${e}`);
+            throw e;
+        }
+    }
+}
+
+app.post('/users', (req, res) => {
+    save_users()
+    .then(() => {
+        res.sendStatus(201);
+    })
+    .catch((err) => {
+        res.status(500).send(`Failed to save data: ${err}`);
+    });
+});
 
   //port definition
 const port = process.env.PORT || 5000;
 
-app.listen(port, () => {
+app.listen(port, async () => {
     console.log(`Server started on port ${port}`);
+    await knex.raw('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY,Names TEXT, NID TEXT, phone_number TEXT, gender TEXT, email TEXT);');
 });
 
